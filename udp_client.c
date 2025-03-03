@@ -9,8 +9,11 @@
  #include <unistd.h>
  #include <arpa/inet.h>
  #include <time.h> 
+ #include <fcntl.h>
+ #include<errno.h>
  #define SERVER_PORT 12345
- #define BUF_SIZE 1024
+ #define MAX_MSG_SIZE 1472 // Maximum message payload in bytes. 
+ #define TEST_DURATION 10.0 // Test duration in seconds. 
  
  double current_time_in_seconds(void);
  int main(void);
@@ -25,16 +28,27 @@
  int main(void) {
      int sockfd; 
      struct sockaddr_in servaddr; 
-     char send_buffer[BUF_SIZE] = "Latency test message";
-     char recv_buffer[BUF_SIZE];
-     socklen_t servaddr_len = sizeof(servaddr);
- 
+     char send_buffer[MAX_MSG_SIZE];
+
      // Create UDP socket
      if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-         perror("socket creation failed");
-         exit(EXIT_FAILURE);
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+     // Set the socket to nonblocking mode. 
+     int flags = fcntl(sockfd, F_GETFL, 0);
+     if (flags < 0) {
+        perror("fcntl F_GETFL failed");
+        close(sockfd);
+        exit(EXIT_FAILURE);
      }
- 
+     if (fcntl(sockfd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        perror("fcntl F_SETFL failed");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+     }
+
      // Set up server address structure
      memset(&servaddr, 0, sizeof(servaddr));
      servaddr.sin_family = AF_INET;
@@ -44,46 +58,45 @@
          close(sockfd);
          exit(EXIT_FAILURE);
      }
+
+     // Prepare a message that maxes out buffer size. 
+     memset(send_buffer, 'A', MAX_MSG_SIZE);
  
      // Begin latency measurement
      double start_time = current_time_in_seconds();
- 
-     if (sendto(sockfd, send_buffer, strlen(send_buffer), 0,
-             (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
-         perror("sendto failed");
-         close(sockfd);
-         exit(EXIT_FAILURE);
+     unsigned long sent_messages = 0;
+     unsigned long total_bytes_sent = 0;
+
+     while (current_time_in_seconds() - start_time < TEST_DURATION) {
+        ssize_t ret = sendto(sockfd, send_buffer, MAX_MSG_SIZE, 0 , (struct sockaddr *)&servaddr, sizeof(servaddr));
+
+        if (ret < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) { // Socket not ready, retry immediately
+                continue;
+            }
+            else {
+                perror("sendto failure");
+                break;
+            } 
+        } else {
+            sent_messages++;
+            total_bytes_sent += ret;
+        }
      }
- 
-     ssize_t recv_bytes = recvfrom(sockfd, recv_buffer, BUF_SIZE, 0,
-                                 (struct sockaddr *)&servaddr, &servaddr_len);
-     if (recv_bytes < 0) {
-         perror("recvfrom failed");
-         close(sockfd);
-         exit(EXIT_FAILURE);
-     }
+
      double end_time = current_time_in_seconds();
- 
-     recv_buffer[recv_bytes] = '\0';  // Null-terminate the received message
- 
-     // Calculate the round-trip time and one-way latency estimate
-     double rtt = end_time - start_time;
-     double latency = rtt / 2;
- 
-     // Calculate throughput based on one-way latency.
-     // Throughput = (number of bytes transmitted) / (one-way delay)
-     size_t msg_len = strlen(send_buffer);
-     double throughput = (double)msg_len / latency; // in bytes per second
- 
-     // round-trip throughput:
-     double round_trip_throughput = (2.0 * msg_len) / rtt;
- 
-     printf("Sent message: %s\n", send_buffer);
-     printf("Received echo: %s\n", recv_buffer);
-     printf("Round-trip time: %.9f seconds\n", rtt);
+     double elapsed_time = end_time - start_time;
+     
+     // Calculate approximate one-way latency and throughput
+     // Latency is estimated as half the average round-trip time per message.
+     double latency = elapsed_time / (2 * sent_messages);
+     // Throughput is calculated as the total bytes sent divided by the elapsed time.
+     double throughput = total_bytes_sent / elapsed_time;
+     
+     printf("Sent %lu messages, %lu bytes in %.2f seconds\n", 
+            sent_messages, total_bytes_sent, elapsed_time);
      printf("Approximate one-way latency: %.9f seconds\n", latency);
-     printf("Throughput (one-way): %.9f bytes/second\n", throughput);
-     printf("Round-trip throughput: %.9f bytes/second\n", round_trip_throughput);
+     printf("Throughput: %.9f bytes/second\n", throughput);
  
      close(sockfd);
      return 0;

@@ -8,13 +8,13 @@
 #include <arpa/inet.h>
 
 #define SERVER_PORT 12345
-#define BUF_SIZE 1024
+#define HEADER_SIZE 64 // We only want to read the first few bytes.
 
 int main(void);
 
 int main(void) {
     int sockfd;
-    char buffer[BUF_SIZE];
+    char buffer[HEADER_SIZE];
     struct sockaddr_in servaddr, cliaddr;
     socklen_t cliaddr_len = sizeof(cliaddr);
 
@@ -29,9 +29,9 @@ int main(void) {
     memset(&cliaddr, 0, sizeof(cliaddr));
 
     // Set up server address structure
-    servaddr.sin_family = AF_INET;          // IPv4
-    servaddr.sin_addr.s_addr = INADDR_ANY;    // Listen on all interfaces
-    servaddr.sin_port = htons(SERVER_PORT);   // Set port number
+    servaddr.sin_family = AF_INET; // IPv4
+    servaddr.sin_addr.s_addr = INADDR_ANY; // Listen on all interfaces
+    servaddr.sin_port = htons(SERVER_PORT); // Set port number
 
     // Bind the socket to the server address
     if (bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
@@ -42,23 +42,19 @@ int main(void) {
 
     printf("UDP server listening on port %d...\n", SERVER_PORT);
 
-    // Main loop: receive datagrams and echo them back to the sender
+    // Main loop: receive datagrams and acknowledge the client
     while (1) {
-        ssize_t n = recvfrom(sockfd, (char *)buffer, BUF_SIZE, 0,
+        ssize_t n = recvfrom(sockfd, (char *)buffer, HEADER_SIZE, 0,
                              (struct sockaddr *)&cliaddr, &cliaddr_len);
         if (n < 0) {
             perror("recvfrom failed");
             continue;
         }
-
-        buffer[n] = '\0';  // Null-terminate the received data
-        printf("Received from %s:%d: %s\n",
-               inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port), buffer);
-
-        // Echo the message back to the sender
-        if (sendto(sockfd, (const char *)buffer, n, 0,
-                   (const struct sockaddr *)&cliaddr, cliaddr_len) < 0) {
-            perror("sendto failed");
+        // Send short response verification. 
+        const char *ack = "received packet";
+        if (sendto(sockfd, ack, strlen(ack), 0, 
+                (struct sockaddr *)&cliaddr, cliaddr_len) < 0) {
+                    perror("sendto failed");
         }
     }
 
