@@ -14,6 +14,7 @@
  #define SERVER_PORT 12345
  #define MAX_MSG_SIZE 1472 // Maximum message payload in bytes. 
  #define TEST_DURATION 10.0 // Test duration in seconds. 
+ #define REMOTE_ADDRESS "168.6.245.109"
  
  double current_time_in_seconds(void);
  int main(void);
@@ -53,7 +54,7 @@
      memset(&servaddr, 0, sizeof(servaddr));
      servaddr.sin_family = AF_INET;
      servaddr.sin_port = htons(SERVER_PORT);
-     if (inet_pton(AF_INET, "127.0.0.1", &servaddr.sin_addr) <= 0) {
+     if (inet_pton(AF_INET, REMOTE_ADDRESS, &servaddr.sin_addr) <= 0) {
          perror("Invalid address or address not supported");
          close(sockfd);
          exit(EXIT_FAILURE);
@@ -66,12 +67,14 @@
      double start_time = current_time_in_seconds();
      unsigned long sent_messages = 0;
      unsigned long total_bytes_sent = 0;
+     unsigned long iterations = 0;
 
      while (current_time_in_seconds() - start_time < TEST_DURATION) {
+        iterations++;
         ssize_t ret = sendto(sockfd, send_buffer, MAX_MSG_SIZE, 0 , (struct sockaddr *)&servaddr, sizeof(servaddr));
-
         if (ret < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) { // Socket not ready, retry immediately
+                // printf("HELLO\n");
                 continue;
             }
             else {
@@ -79,6 +82,8 @@
                 break;
             } 
         } else {
+            // unsigned long *message_counter = (unsigned long *)&send_buffer[0];
+            // *message_counter = sent_messages;
             sent_messages++;
             total_bytes_sent += ret;
         }
@@ -93,10 +98,11 @@
      // Throughput is calculated as the total bytes sent divided by the elapsed time.
      double throughput = total_bytes_sent / elapsed_time;
      
-     printf("Sent %lu messages, %lu bytes in %.2f seconds\n", 
-            sent_messages, total_bytes_sent, elapsed_time);
+     printf("Sent %lu messages out of %lu attempts, %lu bytes in %.2f seconds\n", 
+            sent_messages, iterations, total_bytes_sent, elapsed_time);
      printf("Approximate one-way latency: %.9f seconds\n", latency);
-     printf("Throughput: %.9f bytes/second\n", throughput);
+     printf("Throughput: %.9f Mbps\n", throughput * (8 / 1e6));
+     
  
      close(sockfd);
      return 0;

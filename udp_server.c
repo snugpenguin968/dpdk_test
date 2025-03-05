@@ -8,7 +8,7 @@
 #include <arpa/inet.h>
 
 #define SERVER_PORT 12345
-#define HEADER_SIZE 64 // We only want to read the first few bytes.
+#define HEADER_SIZE 1472 
 
 int main(void);
 
@@ -42,6 +42,8 @@ int main(void) {
 
     printf("UDP server listening on port %d...\n", SERVER_PORT);
 
+    unsigned long messages_received = 0;
+    unsigned long total_bytes_received = 0;
     // Main loop: receive datagrams and acknowledge the client
     while (1) {
         ssize_t n = recvfrom(sockfd, (char *)buffer, HEADER_SIZE, 0,
@@ -50,12 +52,8 @@ int main(void) {
             perror("recvfrom failed");
             continue;
         }
-        // Send short response verification. 
-        const char *ack = "received packet";
-        if (sendto(sockfd, ack, strlen(ack), 0, 
-                (struct sockaddr *)&cliaddr, cliaddr_len) < 0) {
-                    perror("sendto failed");
-        }
+        messages_received++;
+        total_bytes_received += n;
     }
 
     close(sockfd);
