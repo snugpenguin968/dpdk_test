@@ -4,7 +4,8 @@
 #ifndef UDP_COMMON_H
 #define UDP_COMMON_H
 
-#define _POSIX_C_SOURCE 200809L 
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +23,15 @@
 #define MAX_MSG_SIZE 1472
 #define TEST_DURATION 10.0
 #define REMOTE_ADDRESS "168.6.245.109"
+#define TERMINATE_MSG "TERMINATE_TEST"
+#define TCP_PORT 12346  // Separate port for TCP statistics
+
+// Statistics structure
+typedef struct {
+    unsigned long messages_received;
+    unsigned long total_bytes_received;
+    double avg_message_size;
+} ServerStats;
 
 // Function prototypes
 double current_time_in_seconds(void);
@@ -50,4 +60,4 @@ int set_socket_nonblocking(int sockfd) {
     return 0;
 }
 
-#endif
+#endif // UDP_COMMON_H
