@@ -46,6 +46,7 @@ int main(void) {
     unsigned long total_bytes_received = 0;
     // Main loop: receive datagrams and acknowledge the client
     while (1) {
+        printf("RECEIVED\n");
         ssize_t n = recvfrom(sockfd, (char *)buffer, HEADER_SIZE, 0,
                              (struct sockaddr *)&cliaddr, &cliaddr_len);
         if (n < 0) {

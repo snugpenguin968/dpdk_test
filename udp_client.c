@@ -2,29 +2,7 @@
  * This UDP client sends a test message to the server,
  * waits for an echo, and then calculates the round-trip time (RTT).
  */
- #define _POSIX_C_SOURCE 200809L 
- #include <stdio.h>
- #include <stdlib.h>
- #include <string.h>
- #include <unistd.h>
- #include <arpa/inet.h>
- #include <time.h> 
- #include <fcntl.h>
- #include<errno.h>
- #define SERVER_PORT 12345
- #define MAX_MSG_SIZE 1472 // Maximum message payload in bytes. 
- #define TEST_DURATION 10.0 // Test duration in seconds. 
- #define REMOTE_ADDRESS "168.6.245.109"
- 
- double current_time_in_seconds(void);
- int main(void);
- 
- // Returns the current time in seconds using a high-resolution clock
- double current_time_in_seconds(void) {
-     struct timespec ts;
-     clock_gettime(CLOCK_MONOTONIC, &ts);
-     return ts.tv_sec + ts.tv_nsec / 1e9;
- }
+#include "udp_test.h"
  
  int main(void) {
      int sockfd; 
