@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <time.h>
+#include <stdint.h>
 
 // Common constants
 #define SERVER_PORT 12345
@@ -28,8 +29,8 @@
 
 // Statistics structure
 typedef struct {
-    unsigned long messages_received;
-    unsigned long total_bytes_received;
+    uint64_t messages_received;
+    uint64_t total_bytes_received;
     double avg_message_size;
 } ServerStats;
 

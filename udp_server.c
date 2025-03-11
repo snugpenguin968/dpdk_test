@@ -2,11 +2,11 @@
  * This UDP server listens on a fixed port (12345) and echoes back any message it receives.
  */
 #include "udp_test.h"
+#include <inttypes.h>
 
 #define TERMINATE_MSG "TERMINATE_TEST"
 #define TCP_PORT 12346
 
-int main(void);
 
 int main(void) {
     int sockfd;
@@ -20,15 +20,8 @@ int main(void) {
         exit(EXIT_FAILURE);
     }
 
-    // Set the socket to nonblocking mode. 
-    int flags = fcntl(sockfd, F_GETFL, 0);
-    if (flags < 0) {
-        perror("fcntl F_GETFL failed");
-        close(sockfd);
-        exit(EXIT_FAILURE);
-    }
-    if (fcntl(sockfd, F_SETFL, flags | O_NONBLOCK) < 0) {
-        perror("fcntl F_SETFL failed");
+    // Set socket to non-blocking mode
+    if (set_socket_nonblocking(sockfd) < 0) {
         close(sockfd);
         exit(EXIT_FAILURE);
     }
@@ -85,7 +78,6 @@ int main(void) {
     if (stats.messages_received > 0) {
         stats.avg_message_size = (double)stats.total_bytes_received / stats.messages_received;
     }
-    close(sockfd);
 
     int tcp_sockfd, new_socket;
     struct sockaddr_in tcp_servaddr, tcp_cliaddr;
@@ -125,17 +117,23 @@ int main(void) {
         close(tcp_sockfd);
         exit(EXIT_FAILURE);
     }
+
+   // After calculating statistics, format them as a string
+    char stats_buffer[256];
+    snprintf(stats_buffer, sizeof(stats_buffer), "%" PRIu64 " %" PRIu64 " %.6f", 
+            stats.messages_received, 
+            stats.total_bytes_received, 
+            stats.avg_message_size);
+
+    // Send the string to the client
+    send(new_socket, stats_buffer, strlen(stats_buffer) + 1, 0); // +1 for null terminator
     
-    // Send statistics structure to client
-    if (send(new_socket, &stats, sizeof(stats), 0) < 0) {
-        perror("Failed to send statistics");
-    } else {
-        printf("Statistics sent to client via TCP\n");
-    }
+    printf("Sent statistics to client\n");
     
-    // Close TCP connections
+    // Close all sockets
     close(new_socket);
     close(tcp_sockfd);
-
+    close(sockfd);
+    
     return 0;
 }
