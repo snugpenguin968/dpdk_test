@@ -18,13 +18,15 @@
 #include <errno.h>
 #include <time.h>
 #include <stdint.h>
+#include <sys/select.h>
+#include <sys/time.h>
+
 
 // Common constants
 #define SERVER_PORT 12345
 #define MAX_MSG_SIZE 1472
-#define TEST_DURATION 10.0
-#define REMOTE_ADDRESS "168.6.245.109"
-#define TERMINATE_MSG "TERMINATE_TEST"
+#define TEST_DURATION 5.0
+#define REMOTE_ADDRESS "127.0.0.1"
 #define TCP_PORT 12346  // Separate port for TCP statistics
 
 // Statistics structure
@@ -60,5 +62,7 @@ int set_socket_nonblocking(int sockfd) {
     
     return 0;
 }
+
+const char* TERMINATE_MSG = "TERMINATE_TEST";
 
 #endif // UDP_COMMON_H
