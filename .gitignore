@@ -1,0 +1,20 @@
+# .gitignore
+.venv/
+venv/
+env/
+
+__pycache__/
+*.pyc
+*.pyo
+
+.DS_Store
+*.log
+*.swp
+
+udp_client
+udp_server
+
+.vscode
+
+delays.txt
+delay_histogram.png
