@@ -26,7 +26,7 @@
 #define SERVER_PORT 12345
 #define MAX_MSG_SIZE 1472
 #define TEST_DURATION 5.0
-#define REMOTE_ADDRESS "127.0.0.1"
+#define REMOTE_ADDRESS "168.6.245.109"
 #define TCP_PORT 12346  // Separate port for TCP statistics
 
 // Statistics structure

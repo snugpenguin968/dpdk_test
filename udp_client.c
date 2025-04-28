@@ -1,3 +1,8 @@
+/**
+ * This UDP client "spams" the server with test messages
+ * and computes the latency and throughput of each experiment.
+ */
+
 #include "udp_test.h"
 #include <inttypes.h>
 

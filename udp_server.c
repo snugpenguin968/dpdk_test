@@ -5,10 +5,6 @@
 #include <inttypes.h>
 #include <ctype.h>
 
-#define TERMINATE_MSG "TERMINATE_TEST"
-#define TCP_PORT 12346
-
-
 int main(void) {
     int sockfd;
     char buffer[MAX_MSG_SIZE];
