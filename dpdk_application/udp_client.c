@@ -27,7 +27,7 @@
 #define TX_RING_SIZE 1024      // Size of TX ring. Power of 2.
 #define BURST_SIZE 32          // Number of packets to process in a burst.
 
-#define CLIENT_MAC_STR "00:11:22:33:44:55" // PLACEHOLDER
+#define CLIENT_MAC_STR "08:c0:eb:53:ca:64" 
 #define CLIENT_IP_ADDR_STR "198.6.245.108"
 #define CLIENT_UDP_PORT 9000
 #define SERVER_MAC_STR "AA:BB:CC:DD:EE:FF" // PLACEHOLDER
@@ -57,6 +57,81 @@ parse_mac_addr(const char *mac_str, struct rte_ether_addr *eth_addr) {
         return -1;
     }
     return 0;
+}
+
+static int 
+port_init(uint16_t port_id, struct rte_mempool *pool) {
+    struct rte_eth_conf port_conf_default = {
+        .rxmode = {
+            .offloads = RTE_ETH_RX_OFFLOAD_IPV4_CKSUM, // Enable IP checksum offload on RX
+        },
+        .txmode = {
+            .offloads = RTE_ETH_TX_OFFLOAD_IPV4_CKSUM | // Enable IP checksum offload on TX 
+                        RTE_ETH_TX_OFFLOAD_UDP_CKSUM, // Enable UDP checksum offload on TX
+        }
+    };
+
+    const uint16_t rx_rings = 1, tx_rings = 1;
+    int err;
+    uint16_t q;
+    struct rte_eth_dev_info dev_info;
+    struct rte_eth_txconf txconf;
+
+    if (!rte_eth_dev_is_valid_port(port_id)) {
+        return -1;
+    }
+
+    err = rte_eth_dev_info_get(port_id, &dev_info);
+    if (err != 0) {
+        printf("Error during getting device (port %u) info: %s\n", port_id, strerror(-err));
+        return err;
+    }
+
+    struct rte_eth_conf port_conf = port_conf_default;
+
+    err = rte_eth_dev_configure(port_id, rx_rings, tx_rings, &port_conf);
+    if (err != 0) {
+        printf("rte_eth_dev_configure: err=%d, port=%u\n", err, port_id);
+        return err;
+    }
+
+    // Allocate and set up "rx_rings" RX queues per Ethernet port.
+    for (q = 0; q < rx_rings; q++) {
+        err = rte_eth_rx_queue_setup(port_id, q, RX_RING_SIZE, rte_eth_dev_socket_id(port_id), NULL, pool);
+        if (err < 0) {
+            printf("rte_eth_rx_queue_setup: err=%d, port=%u\n", err, port_id);
+            return err;
+        }
+    }
+
+    txconf = dev_info.default_txconf;
+    txconf.offloads = port_conf.txmode.offloads;
+
+    // Allocate and set up "tx_rings" TX queues per Ethernet port.
+    for (q = 0; q < tx_rings; q++) {
+        err = rte_eth_tx_queue_setup(port_id, q, TX_RING_SIZE, rte_eth_dev_socket_id(port_id), &txconf);
+        if (err < 0) {
+            printf("rte_eth_tx_queue_setup: err=%d, port=%u\n", err, port_id);
+            return err;
+        }
+    }
+
+    err = rte_eth_dev_start(port_id);
+    if (err < 0) {
+        printf("rte_eth_dev_start: err=%d, port=%u\n", err, port_id);
+        return err;
+    }
+
+    err = rte_eth_macaddr_get(port_id, &client_eth_addr);
+    if (err != 0) {
+         printf("rte_eth_macaddr_get: err=%d, port=%u\n", err, port_id);
+        return err;
+    }
+    printf("Port %u MAC: %02" PRIx8 " %02" PRIx8 " %02" PRIx8
+           " %02" PRIx8 " %02" PRIx8 " %02" PRIx8 "\n",
+           port_id, RTE_ETHER_ADDR_BYTES(&client_eth_addr));
+    return 0;
+
 }
 
 int main(int argc, char *argv[]) {
