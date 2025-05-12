@@ -134,6 +134,62 @@ port_init(uint16_t port_id, struct rte_mempool *pool) {
 
 }
 
+static void construct_udp_packet(struct rte_mbuf *mbuf, uint16_t payload_size, uint64_t timestamp_seq) {
+    struct rte_ether_hdr *eth_h;
+    struct rte_ipv4_hdr *ip_h;
+    struct rte_udp_hdr *udp_h;
+    char *payload;
+    uint16_t pkt_len;
+
+    // Reset lengths in case mbufs are reused. 
+    mbuf->pkt_len = 0;
+    mbuf->data_len = 0;
+
+    // Ethernet header
+    eth_h = rte_pktmbuf_mtod(mbuf, struct rte_ether_hdr *);
+    rte_ether_addr_copy(&client_eth_addr, &eth_h->src_addr);
+    rte_ether_addr_copy(&server_eth_addr, &eth_h->dst_addr);
+    eth_h->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4); // Converts ETHER_TYPE from Little Endian to Big Endian
+    pkt_len = sizeof(struct rte_ether_hdr); 
+
+    // IPv4 header
+    ip_h = (struct rte_ipv4_hdr*)(rte_pktmbuf_mtod(mbuf, char*) + pkt_len);
+    ip_h->version_ihl = IP_VERSION | IP_HDRLEN;
+    ip_h->type_of_service = 0;
+    ip_h->total_length = rte_cpu_to_be_16(sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr) + payload_size);
+    ip_h->packet_id = 0;
+    ip_h->fragment_offset = 0;
+    ip_h->time_to_live = IP_DEFTTL;
+    ip_h->next_proto_id = IPPROTO_UDP;
+    ip_h->hdr_checksum = 0;
+    ip_h->src_addr = client_ip_addr;
+    ip_h->dst_addr = server_ip_addr;
+    pkt_len += sizeof(struct rte_ipv4_hdr);
+
+    // UPD header
+    udp_h = (struct rte_udp_hdr *)(rte_pktmbuf_mtod(mbuf, char*) + pkt_len);
+    udp_h->src_port = rte_cpu_to_be_16(CLIENT_UDP_PORT);
+    udp_h->dst_port = rte_cpu_to_be_16(SERVER_PORT);
+    udp_h->dgram_len = rte_cpu_to_be_16(sizeof(struct rte_udp_hdr) + payload_size);
+    udp_h->dgram_cksum = 0;
+    pkt_len += sizeof(struct rte_udp_hdr);
+
+    // Payload
+    payload = rte_pktmbuf_mtod_offset(mbuf, char*, pkt_len);
+    *(uint64_t *)payload = rte_cpu_to_be_64(timestamp_seq); // Important for latency measurement
+    for (uint16_t i = sizeof(uint64_t); i < payload_size; i++) {
+        payload[i] = (char)('A' + (i % 26));
+    }
+    pkt_len += payload_size;
+
+    mbuf->data_len = pkt_len;
+    mbuf->pkt_len = pkt_len;
+    mbuf->l2_len = sizeof(struct rte_ether_hdr);
+    mbuf->l3_len = sizeof(struct rte_ipv4_hdr);
+    mbuf->ol_flags = RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_UDP_CKSUM;
+
+}
+
 int main(int argc, char *argv[]) {
     int ret; 
     int sockfd;
