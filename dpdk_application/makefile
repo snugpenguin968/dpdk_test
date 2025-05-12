@@ -46,6 +46,24 @@ $(CLIENT_TARGET): $(CLIENT_SOURCES) $(DEPS)
 	$(CC) $(CFLAGS) -o $(CLIENT_TARGET) $(CLIENT_SOURCES) $(LDFLAGS)
 	@echo "Built $(CLIENT_TARGET) successfully."
 
+# Find all C source and header files in the current directory
+C_SOURCES := $(wildcard *.c)
+C_HEADERS := $(wildcard *.h)
+ALL_C_FILES := $(C_SOURCES) $(C_HEADERS)
+
+# Formatting target using clang-format
+# Styles available: LLVM, Google, Chromium, Microsoft, Mozilla, WebKit
+# Or use -style=file to look for a .clang-format configuration file
+FORMAT_STYLE := llvm
+
+format:
+	@echo "Formatting C files using style: $(FORMAT_STYLE)..."
+	@clang-format -i -style=$(FORMAT_STYLE) $(ALL_C_FILES)
+	@echo "Formatting complete."
+
+# Declare 'format' as a phony target so make doesn't confuse it with a file named 'format'
+.PHONY: format
+
 
 # Rule to clean build artifacts
 clean:
