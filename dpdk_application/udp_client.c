@@ -37,7 +37,9 @@
 
 #define CLIENT_IP_ADDR_STR "198.6.245.108" // Example client IP
 #define CLIENT_UDP_PORT 9000 // Client's source UDP port for the test
-#define SERVER_MAC_STR "AA:BB:CC:DD:EE:FF" // *** PLACEHOLDER ***
+// Using ens6f0
+#define SERVER_MAC_STR                                                         \
+  "08:c0:eb:53:ca:cc" // Got this by running "ip addr show" on the other machine
 
 #define IP_DEFTTL 64
 #define IP_VERSION 0x40 // ipv4
@@ -48,7 +50,7 @@ static struct rte_ether_addr
     client_eth_addr; // Will be read from NIC by port_init
 static struct rte_ether_addr server_eth_addr; // Parsed from SERVER_MAC_STR
 static uint32_t client_ip_addr;               // Parsed from CLIENT_IP_ADDR_STR
-static uint32_t server_ip_addr; // Parsed from REMOTE_ADDRESS (udp_test.h)
+static uint32_t server_ip_addr;               // Parsed from REMOTE_ADDRESS
 
 volatile bool force_quit = false;
 
@@ -389,7 +391,6 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < nb_tx; i++) {
       total_bytes_tx += tx_mbufs[i]->pkt_len;
     }
-
 
     nb_rx = rte_eth_rx_burst(port_id, 0, rx_mbufs, BURST_SIZE);
     if (nb_rx > 0) {
